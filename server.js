@@ -1,25 +1,26 @@
-const { PeerServer } = require('peer');
 const express = require('express');
+const { ExpressPeerServer } = require('peer');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 9000;
 
-// Health check endpoint (Render needs this)
+app.enable('trust proxy');
+
 app.get('/', (req, res) => {
   res.send('TAG PeerJS Server is running!');
 });
 
-const server = app.listen(PORT, () => {
-  console.log('HTTP server listening on port', PORT);
-});
+const server = http.createServer(app);
 
-// PeerJS server mounted at /peerjs
-const peerServer = PeerServer({
-  server,
-  path: '/peerjs',
+// path:'/' means the server responds at /peerjs (where app.use mounts it)
+const peerServer = ExpressPeerServer(server, {
+  path: '/',
   allow_discovery: true,
   proxied: true,
 });
+
+app.use('/peerjs', peerServer);
 
 peerServer.on('connection', (client) => {
   console.log('Peer connected:', client.getId());
@@ -29,4 +30,7 @@ peerServer.on('disconnect', (client) => {
   console.log('Peer disconnected:', client.getId());
 });
 
-console.log('PeerJS server ready at /peerjs');
+server.listen(PORT, () => {
+  console.log('Server listening on port', PORT);
+  console.log('PeerJS available at /peerjs');
+});
